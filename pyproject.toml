@@ -1,0 +1,23 @@
+[project]
+name = "py_hoist"
+version = "0.1.0"
+description = "Deep-access attribute hoisting (safe, CST-based) as a reusable package."
+readme = "README.md"
+authors = [ { name = "stategen" } ]
+requires-python = ">=3.10"
+dependencies = [
+    "LibCST>=0.4.13",
+]
+
+[project.scripts]
+# prints the installed path to the packaged nuitka plugin
+py_hoist-nuitka-plugin = "py_hoist.print_nuitka_plugin:main"
+
+[tool.setuptools]
+packages = ["py_hoist"]
+
+[tool.setuptools.package-data]
+# ensure the nuitka plugin file is included in the installed package
+py_hoist = ["nuitka_hoist_plugin.py"]
+py_slots = ["nuitka_slots_plugin.py"]
+    
