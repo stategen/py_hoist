@@ -147,7 +147,7 @@ def transform_code_tree(source: str, pos_map: Dict[(int, int, int), AttrUsageInf
         start = col
         end = end_col
 
-        snippet = byte_line[start : end]
+        # snippet = byte_line[start : end]
         var_name_and_left_attr = attr_usage_info.assignStmtInfo.bar_name + ''.join(attr_usage_info.chain_parts.values()[2 :])
         replacement = var_name_and_left_attr.encode('utf-8').decode('latin-1')
         new_byte_line = byte_line[: start] + replacement + byte_line[end :]
