@@ -360,7 +360,7 @@ def _process_Attribute(
 
 #@profile
 def hoist_src(source: str,
-              src_path:Path,
+              src_path:Path|str =None,
               depth: int = 0,
               code_stmt_info_map: dict[str, CodeAssignStmtInfo] =None,
               assignStmtInfo: AssignStmtInfo = None, #因代码太长，以下变量只是为了在ide可以显示不同的颜色
@@ -387,8 +387,9 @@ def hoist_src(source: str,
         # Use VS Code clickable format: File "path", line X
         print("----- SOURCE BEGIN -----\n" + add_line_numbers__(source) + "\n----- SOURCE END -----")
         if src_path:
+            sp = str(src_path)
             print(f"Source parse failed (SyntaxError): {e.msg} at column {e.offset}")
-            print(f'  File "{src_path}", line {e.lineno}')
+            print(f'  File "{sp}", line {e.lineno}')
         else:
             print(f"Source parse failed (SyntaxError): {e.msg} at line {e.lineno}, column {e.offset}")
 
@@ -398,7 +399,8 @@ def hoist_src(source: str,
         print("----- SOURCE BEGIN -----\n" + add_line_numbers__(source) + "\n----- SOURCE END -----")
         print(f"Unexpected error while parsing source: {e}")
         if src_path:
-            print(f'  File "{src_path}", line 1')
+            sp = str(src_path)
+            print(f'  File "{sp}", line 1')
         raise
 
     # 标记本轮是否有任何提升

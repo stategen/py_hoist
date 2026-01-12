@@ -1,9 +1,15 @@
-"""Nuitka 预处理插件：在内存中优化 slots 继承（不修改文件路径）"""
+"""Nuitka pre-processing plugin: optimize slots inheritance in-memory.
+
+This plugin runs in-memory transformations to improve inheritance
+performance for classes using slots (e.g. ``@define(slots=True)`` or
+``@dataclass(slots=True)``). The plugin does not write files; it only
+returns an optimized source string to Nuitka.
+"""
 import sys
 from pathlib import Path
 from nuitka.plugins.PluginBase import NuitkaPluginBase
 
-# 添加工具目录到路径
+# Ensure local tools package is importable when Nuitka loads the plugin.
 _tools_dir = Path(__file__).parent
 if str(_tools_dir) not in sys.path:
     sys.path.insert(0, str(_tools_dir))
@@ -12,29 +18,36 @@ from py_hoist import slots_src
 
 
 class SlotsOptimizerPlugin(NuitkaPluginBase):
-    """Nuitka 插件类：在内存中优化 slots 继承"""
+    """Nuitka plugin: optimize slots inheritance in-memory.
+
+    Only project source files under the ``src`` tree are processed; third-party
+    or system modules are skipped.
+    """
+
     plugin_name = "slots-optimizer"
-    plugin_desc = "优化 @define(slots=True) 和 @dataclass(slots=True) 的继承性能"
+    plugin_desc = ("Optimize inheritance performance for @define(slots=True) and "
+                   "@dataclass(slots=True)")
 
     def onModuleSourceCode(self, module_name, source_code, source_filename):
-        """Nuitka 预处理钩子：在内存中优化源代码（不修改文件路径）
-        
+        """Nuitka hook: optionally transform module source string.
+
         Args:
-            module_name: 模块名
-            source_code: 源代码字符串
-            source_filename: 源文件路径
-        
+            module_name: the module name being compiled
+            source_code: original source code as a string
+            source_filename: original source filename (may be None)
+
         Returns:
-            优化后的源代码字符串
+            The (possibly) optimized source code string to feed back to Nuitka.
         """
-        # 只处理项目源代码（src 目录中的文件）
+
+        # Only process project source files (files under 'src')
         if source_filename and 'src' in str(source_filename):
-            # 在内存中优化代码（不修改文件路径）
+            # Optimize code in-memory (do not modify files)
             optimized_code = slots_src(source_code, Path(source_filename) if source_filename else None)
 
-            # 如果代码被修改了，记录日志
+            # Log if code was modified
             if optimized_code != source_code:
-                self.info(f"优化了模块 {module_name} 的 slots 继承")
+                self.info(f"\x1b[34mOptimized slots inheritance for module {module_name}\x1b[0m")
 
             return optimized_code
 
