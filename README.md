@@ -2,7 +2,7 @@
 
 [中文说明（README.zh.md）](README.zh.md)
 
-py_hoist is a Python toolkit designed to improve runtime performance by speeding up hot-path attribute accesses. It currently provides two tools: `hoist_src` and `slots_src`.
+py_hoist is a Python toolkit that improves runtime performance by modifying source or intermediate code to speed up and increase hot-path attribute accesses. It currently provides two tools: `hoist_src` and `slots_src`.
 
 
 ## 1. py_hoist.hoist_src
