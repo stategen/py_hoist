@@ -2,8 +2,10 @@
 
 [中文说明（README.zh.md）](README.zh.md)
 
+py_hoist is a Python toolkit designed to improve runtime performance by speeding up hot-path attribute accesses. It currently provides two tools: `hoist_src` and `slots_src`.
 
-## 1. py_hoist.hoist_src — Usage
+
+## 1. py_hoist.hoist_src
 `py_hoist.hoist_src` implements "deep-access variableization" based on the Python AST.
 It extracts frequently accessed deep attribute expressions inside a function into local variables (for example, turning `self.a` into `self_a = self.a`, or `obj.path.join` into `obj_path_join = obj.path.join`).
 This reduces repeated deep lookups on hot paths, improves runtime performance, and reduces the risk of regressions caused by short-circuiting/guards.

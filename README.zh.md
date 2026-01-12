@@ -2,9 +2,10 @@
 
 [English version (README.md)](README.md)
 
+py_hoist 是一个 Python 工具集，旨在通过提高 Python 的热访问速度来提升运行性能。它目前包含两个工具：`hoist_src` 和 `slots_src`。
 
 
-## 1. py_hoist.hoist_src — 使用说明
+## 1. py_hoist.hoist_src
 `py_hoist.hoist_src` 基于 AST 实现“深层属性访问变量化”。
 它会将函数中多次出现的深层属性访问提升为局部变量（例如将 `self.a` 提取为 `self_a = self.a`，或将 `obj.path.join` 提取为 `obj_path_join = obj.path.join`），
 以减少热路径上的重复查找，提高运行时性能，并降低因短路/守卫（guard）引入的回归风险。
