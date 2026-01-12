@@ -78,12 +78,17 @@ class AssignStmtInfo:
 
         valid_cnt = 0
         attr_in_index = False
+        find_can_hoist = False
         for attr_info in self.attr_infos:
             if attr_info.in_index:
                 attr_in_index = True
                 break
 
             if attr_info.used_type.can_hoist:
+                find_can_hoist = True
+                valid_cnt += 1
+
+            elif find_can_hoist:
                 valid_cnt += 1
 
         if attr_in_index or valid_cnt > 1:

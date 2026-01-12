@@ -236,9 +236,6 @@ def _attr_usage_info_to_assignStmtInfo(
             # 立即把新创建的 Assign 插入 AST（直接在 insert_point 位置，不作额外保护）
             path = find_stmt_list_path__(func, insert_point)
             if not path:
-                # try module-level search as fallback
-                path = find_stmt_list_path__(tree, insert_point)
-            if not path:
                 # fallback to owner_stmt's location within the function
                 path = find_stmt_list_path__(func, owner_stmt) if owner_stmt is not None else []
             if not path:
