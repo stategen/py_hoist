@@ -17,6 +17,7 @@ if str(_tools_dir) not in sys.path:
 from py_hoist import slots_src
 
 
+#python -m py_hoist.hoist_code -noback src/
 class SlotsOptimizerPlugin(NuitkaPluginBase):
     """Nuitka plugin: optimize slots inheritance in-memory.
 
