@@ -189,6 +189,8 @@ def _attr_usage_info_to_assignStmtInfo(
                             if loop_node_has_base:
                                 break
 
+                attr_usage_info.loop_node_has_base =loop_node_has_base           
+
                 if not loop_node_has_base:
                     if attr_usage_info.base_def is not None:
                         base_def_stmt = find_stmt_ancestor__(attr_usage_info.base_def, func_parent_map)

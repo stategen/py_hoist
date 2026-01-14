@@ -18,13 +18,10 @@ class CodeAssignStmtInfo:
 
 class AttrUsedInType(Enum):
 
-    def __new__(cls, _value: int, can_hoist: bool = True):
-        obj = object.__new__(cls)
-        obj._value_ = _value
-        return obj
-
-    def __init__(self, _value: int, can_hoist: bool = True):
-        self.can_hoist = can_hoist
+    def __init__(self, flat: int, is_first: bool = True):
+        # Enum already sets the `.value` attribute; only record extra flag here.
+        self.is_first = is_first
+        self.flat = flat
 
     IN_FIRST_BOOLOP = (1, True)
     IN_OTHER_BOOLOP = (2, False)
@@ -38,7 +35,9 @@ class AttrUsedInType(Enum):
 @dataclass(slots = True)
 class AttrUsageInfo:
     attr_node: ast.Attribute = None  # 使用的属性节点
-    base_def: Optional[cst.AST] = None  # 属性的基础定义节点
+    base_def: Optional[ast.AST] = None  # 属性的基础定义节点
+    loop_node_has_base: bool = False  # 属性的基础定义节点是否在循环内
+
     base_text: str = None  # 属性的基础定义节点
     calc_var_name: str = None  # 属性的基础定义节点
     used_in_loop: bool = False
@@ -84,7 +83,7 @@ class AssignStmtInfo:
                 attr_in_index = True
                 break
 
-            if attr_info.used_type.can_hoist:
+            if attr_info.used_type.is_first or not attr_info.loop_node_has_base:
                 find_can_hoist = True
                 valid_cnt += 1
 
