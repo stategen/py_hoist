@@ -81,6 +81,7 @@ def hoist_path(input_path: str, create_backup: bool = True):
         _hoist_file(inp, backup_suffix = backup_suffix)
 
 
+#python -m py_hoist.hoist_code .\src
 def main(argv: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(description = 'Run attribute hoister on file or directory')
     parser.add_argument('input_path', help = 'file or directory to process')
