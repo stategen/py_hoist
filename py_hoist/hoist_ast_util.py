@@ -286,6 +286,34 @@ def get_up_comprehension_expr__(node: Optional[ast.AST], func_parent_map: Dict[a
     return None
 
 
+def get_outer_expr__(node: ast.AST, parent_map: dict[ast.AST, ast.AST]) -> ast.AST:
+    cur = node
+    outer = node
+    while True:
+        p = parent_map.get(cur)
+        if p is None:
+            break
+        if isinstance(p, ast.expr):
+            outer = p
+            cur = p
+            continue
+        break
+    return outer
+
+
+def get_immediate_enclosing_expr__(node: ast.AST, parent_map: dict[ast.AST, ast.AST]) -> ast.AST:
+    cur = node
+    p = parent_map.get(cur)
+    while p is not None and isinstance(p, ast.expr):
+        # 如果 parent 的父节点不是 expr，则 parent 就是我们要的“外层表达式”
+        gp = parent_map.get(p)
+        if not isinstance(gp, ast.expr):
+            return p
+        cur = p
+        p = gp
+    return node
+
+
 def is_type_annotation__(node: ast.AST, parent_map: Dict[ast.AST, ast.AST]) -> bool:
     """Check if a node is part of a type annotation (AnnAssign, arg, or FunctionDef returns)."""
     curr = node
@@ -333,6 +361,45 @@ def find_stmt_ancestor__(node: ast.stmt, parent_map: Dict[ast.AST, ast.AST]) -> 
     while cur is not None and not isinstance(cur, ast.stmt):
         cur = parent_map.get(cur)
     return cur
+
+
+def get_outer_expr__(node: ast.AST, parent_map: Dict[ast.AST, ast.AST]) -> ast.AST:
+    """Return the outermost enclosing ``ast.expr`` that contains ``node``.
+
+    Example: for ``x.y.z`` when called with the ``z`` Attribute node this
+    returns the full ``x.y.z`` expression node (or a larger enclosing
+    expression if present, e.g. ``(x.y.z).method()``).
+    """
+    cur = node
+    outer = node
+    while True:
+        p = parent_map.get(cur)
+        if p is None:
+            break
+        if isinstance(p, ast.expr):
+            outer = p
+            cur = p
+            continue
+        break
+    return outer
+
+
+def get_immediate_enclosing_expr__(node: ast.AST, parent_map: Dict[ast.AST, ast.AST]) -> ast.AST:
+    """Return the immediate enclosing expression node.
+
+    This returns the smallest ``ast.expr`` that directly encloses ``node``
+    (i.e. the first parent that is an expression whose parent is not an
+    expression). If no enclosing expression exists, returns ``node``.
+    """
+    cur = node
+    p = parent_map.get(cur)
+    while p is not None and isinstance(p, ast.expr):
+        gp = parent_map.get(p)
+        if not isinstance(gp, ast.expr):
+            return p
+        cur = p
+        p = gp
+    return node
 
 
 def get_if_info__(stmt: ast.AST, parent_map: Dict[ast.AST, ast.AST]) -> Tuple[Optional[ast.If], Tuple[Optional[ast.If], str]]:

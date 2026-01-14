@@ -32,11 +32,14 @@ class AttrUsedInType(Enum):
     IN_NORMAL = (7, True)
 
 
+
 @dataclass(slots = True)
 class AttrUsageInfo:
     attr_node: ast.Attribute = None  # 使用的属性节点
     base_def: Optional[ast.AST] = None  # 属性的基础定义节点
     loop_node_has_base: bool = False  # 属性的基础定义节点是否在循环内
+    loop_node : Optional[ast.AST] = None  # 属性的基础定义节点所在的循环节点
+    comp_node : Optional[ast.AST] = None  # 属性的基础定义节点所在的 comprehension 节点
 
     base_text: str = None  # 属性的基础定义节点
     calc_var_name: str = None  # 属性的基础定义节点
@@ -45,6 +48,7 @@ class AttrUsageInfo:
     used_type: AttrUsedInType = AttrUsedInType.IN_NORMAL
     chain_text: str = None  # 赋值语句的源代码文本
     chain_parts: MultiItems[str, str] = None  # 赋值语句的源代码文本
+    base_names: set[str] = None  # 赋值语句的源代码文本
     chain_2_text: str = None  # 赋值语句的源代码文本 （仅前两段） self.xxxx, map[xxx]
 
     has_more3_chains: bool = False  # 是否包含多层链

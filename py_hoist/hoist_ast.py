@@ -15,7 +15,7 @@ from .hoist_ast_util import (attr_chain_text_ast__, build_parent_map__, get_up_l
                              safe_unparse__, get_subattr_for_chain__, is_in_first_operand_of_boolop__, get_attr_name_and_pos__,
                              add_line_numbers__, sanitize_ident__, split_expr_token_to_items__, loop_has_prior_definition__,
                              find_name_ident_used_or_new__, get_loop_assign_attribute_names__, get_up_comprehension_expr__,
-                             split_base_ident__)
+                             split_base_ident__, get_outer_expr__, get_immediate_enclosing_expr__)
 
 # Debug flag for development diagnostics. Set to True to enable verbose
 # search/creation logging for hoist decision debugging.
@@ -153,14 +153,6 @@ def _attr_usage_info_to_assignStmtInfo(
             if (loop_node or comp_expr) and not attr_usage_info.base_loop_re_assigned:  # 在循环内使用
                 loop_node_has_base = False
 
-                base_names: set[str] = {attr_usage_info.chain_parts.keys()[0]}
-
-                k0 = attr_usage_info.chain_parts.keys()[0].split('.')[0]
-                base_names.update(split_base_ident__(k0))
-
-                if attr_usage_info.chain_parts.values()[1].startswith('['):
-                    base_names.add(attr_usage_info.chain_parts.keys()[1])
-
                 # If the base name appears in the loop target (for a header like
                 # `for attr_name, attr_value in ...`) treat it as present in-loop.
                 loop_target_names: set[str] = set()
@@ -174,8 +166,9 @@ def _attr_usage_info_to_assignStmtInfo(
                         loop_target_names.update(ast_names)
 
                 # Consider prior definitions in body and also loop-target names
-                loop_node_has_base = bool(base_names & loop_target_names)
-                loop_node_has_base = loop_node_has_base or loop_has_prior_definition__(func, loop_node or comp_expr, base_names)
+                loop_node_has_base = bool(attr_usage_info.base_names & loop_target_names)
+                loop_node_has_base = loop_node_has_base or loop_has_prior_definition__(func, loop_node or comp_expr,
+                                                                                       attr_usage_info.base_names)
 
                 if not loop_node_has_base:
                     for _sub_node in ast.walk(attr_usage_info.hoist_sub_attr_node):
@@ -189,7 +182,7 @@ def _attr_usage_info_to_assignStmtInfo(
                             if loop_node_has_base:
                                 break
 
-                attr_usage_info.loop_node_has_base =loop_node_has_base           
+                attr_usage_info.loop_node_has_base = loop_node_has_base
 
                 if not loop_node_has_base:
                     if attr_usage_info.base_def is not None:
@@ -223,6 +216,12 @@ def _attr_usage_info_to_assignStmtInfo(
 
             if insert_point is None:
                 insert_point = owner_stmt
+
+            if not attr_usage_info.loop_node_has_base:
+                if attr_usage_info.used_type in (AttrUsedInType.IN_ELIF_TEST_FIRST, AttrUsedInType.IN_ELIF_TEST_OTHER):
+                    root_if, _ = get_if_info__(attr_usage_info.attr_node, func_parent_map)
+                    if root_if is not None:
+                        insert_point = root_if
 
             # 创建新的 Assign AST 节点： var_name = <hoist_sub_attr_expr>
             new_value = ast.copy_location(copy.deepcopy(attr_usage_info.hoist_sub_attr_node), attr_usage_info.hoist_sub_attr_node)
@@ -292,6 +291,7 @@ def _process_Attribute(
             return
 
     used_in_loop = False
+
     if owner_stmt is not None:
         loop_node = get_up_loop_node__(node = attr_node, func_parent_map = func_parent_map)
         comp_node = get_up_comprehension_expr__(attr_node, func_parent_map)
@@ -300,8 +300,10 @@ def _process_Attribute(
     # compute chain text and detect with-conflict
     under_with_conflict = chain_text in with_conflicts
 
-    # if chain_text == 'symbol_position_map[pos_contract_symbol].append':
-    #     print(f"chain_text: {chain_text}")
+    if chain_text == 'source.param_map':
+        print(f"chain_text: {chain_text}")
+    outer_expr = get_outer_expr__(attr_node, func_parent_map)
+    outer_expr_text = ast.unparse(outer_expr)
 
     # Decide precise usage context: BoolOp-first, If-test (first/other), Elif-test (first/other), or normal
     used_type = AttrUsedInType.IN_NORMAL
@@ -322,12 +324,14 @@ def _process_Attribute(
     attr_usage_info = AttrUsageInfo(used_in_loop = used_in_loop,
                                     attr_node = attr_node,
                                     used_type = used_type,
+                                    loop_node = loop_node,
+                                    comp_node = comp_node,
                                     under_with_conflict = under_with_conflict)
     attr_usage_info.base_def = find_base_def_no_map__(attr = attr_node,
                                                       func = func,
                                                       func_parent_map = func_parent_map,
                                                       func_args = func_args)
-    attr_usage_infos.append(attr_usage_info)
+
     if attr_node in in_index_attr_nodes:
         attr_usage_info.in_index = True
 
@@ -355,6 +359,85 @@ def _process_Attribute(
     sub_ident_1 = sanitize_ident__(attr_usage_info.chain_parts.keys()[1])
     attr_usage_info.calc_var_name = sub_ident_0 + '_' + sub_ident_1
     # for readability.text_part_0
+
+    base_names: set[str] = {attr_usage_info.chain_parts.keys()[0]}
+
+    k0 = attr_usage_info.chain_parts.keys()[0].split('.')[0]
+    base_names.update(split_base_ident__(k0))
+
+    if attr_usage_info.chain_parts.values()[1].startswith('['):
+        base_names.add(attr_usage_info.chain_parts.keys()[1])
+
+    attr_usage_info.base_names = base_names
+
+    if attr_usage_info.used_type in (AttrUsedInType.IN_IF_TEST_OTHER, AttrUsedInType.IN_ELIF_TEST_OTHER):
+        # For "other" branches (non-first logical path) check whether any
+        # of the base names appear in earlier tests of the same if/elif
+        # chain. If so, insert the hoist assignment before the root If
+        # so the temporary is available for those earlier tests.
+        root_if, (immediate_if, branch_type) = get_if_info__(attr_usage_info.attr_node, func_parent_map)
+        if immediate_if is not None and branch_type == 'test' and root_if is not None:
+            prior_tests = []
+
+            def _test_contains_base(tnode: ast.AST) -> bool:
+                # Robustly detect whether any sub-node in tnode references
+                # one of the base names. This handles Name, Attribute,
+                # Subscript, Call, and nested structures.
+                def _node_has_base(node: ast.AST) -> bool:
+                    if node is None:
+                        return False
+                    if isinstance(node, ast.Name):
+                        return node.id in attr_usage_info.base_names
+                    if isinstance(node, ast.Attribute):
+                        chain = attr_chain_text_ast__(node)
+                        base = chain.split('.')[0]
+                        return base in attr_usage_info.base_names
+                    if isinstance(node, ast.Subscript):
+                        # check the value (e.g. source[...] ) and the slice
+                        return _node_has_base(node.value) or _node_has_base(getattr(node, 'slice', None))
+                    if isinstance(node, ast.Call):
+                        # check function object and all arguments/keywords
+                        if _node_has_base(node.func):
+                            return True
+                        for a in getattr(node, 'args', []):
+                            if _node_has_base(a):
+                                return True
+                        for kw in getattr(node, 'keywords', []):
+                            if _node_has_base(getattr(kw, 'value', None)):
+                                return True
+                        return False
+                    # Fallback: inspect children
+                    for child in ast.iter_child_nodes(node):
+                        if _node_has_base(child):
+                            return True
+                    return False
+
+                return _node_has_base(tnode)
+
+            # Also check earlier operands in the same BoolOp test (e.g.
+            # `isinstance(source, X) and source.param_map`). If the
+            # attribute appears in a later operand, any earlier operand that
+            # references the base prevents hoisting.
+            if immediate_if is not None and isinstance(getattr(immediate_if, 'test', None), ast.BoolOp):
+                boolop = immediate_if.test
+                containing_index = None
+                for idx, val in enumerate(boolop.values):
+                    for n in ast.walk(val):
+                        if n is attr_usage_info.attr_node:
+                            containing_index = idx
+                            break
+                    if containing_index is not None:
+                        break
+                if containing_index is not None and containing_index > 0:
+                    for j in range(containing_index):
+                        if _test_contains_base(boolop.values[j]):
+                            return  # earlier operand uses base -> cannot hoist
+
+            for tnode in prior_tests:
+                if _test_contains_base(tnode):
+                    return  #前面的判断中用到base, 无法提升
+
+    attr_usage_infos.append(attr_usage_info)
 
 
 #@profile
