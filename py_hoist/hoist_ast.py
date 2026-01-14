@@ -300,10 +300,10 @@ def _process_Attribute(
     # compute chain text and detect with-conflict
     under_with_conflict = chain_text in with_conflicts
 
-    if chain_text == 'source.param_map':
-        print(f"chain_text: {chain_text}")
-    outer_expr = get_outer_expr__(attr_node, func_parent_map)
-    outer_expr_text = ast.unparse(outer_expr)
+    # if chain_text == 'source.param_map':
+    #     print(f"chain_text: {chain_text}")
+    # outer_expr = get_outer_expr__(attr_node, func_parent_map)
+    # outer_expr_text = ast.unparse(outer_expr)
 
     # Decide precise usage context: BoolOp-first, If-test (first/other), Elif-test (first/other), or normal
     used_type = AttrUsedInType.IN_NORMAL
